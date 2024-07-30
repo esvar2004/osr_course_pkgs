@@ -60,10 +60,10 @@ def dijkstra(adj_matrix, start_node, target_node, env):
     distances = [float('inf')] * num_nodes
     distances[start_node] = 0
     
-    # Predecessor array
+    # Predecessor Array
     predecessors = [-1] * num_nodes
     
-    # Visited array
+    # Visited Array
     visited = [False] * num_nodes
     
     for _ in range(num_nodes):
@@ -76,7 +76,7 @@ def dijkstra(adj_matrix, start_node, target_node, env):
                 min_index = i
         
         if min_index == -1:
-            break  # All remaining nodes are inaccessible from start_node
+            break
         
         # Mark the selected node as visited
         visited[min_index] = True
@@ -136,7 +136,7 @@ for ob in env.obs:
   num += triangle_coord(ob.x1, ob.y1, dist_var)
   num += triangle_coord(ob.x2, ob.y2, dist_var)
 
-size = 100 + num # Size of Adjacency Matrix (including Start and End Nodes)
+size = 50 + num # Size of Adjacency Matrix (including Start and End Nodes)
 adj_mat = [[0] * size for _ in range(size)]
 
 #Populating Remaining Coordinates
