@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 import pylab as pl
+from shapely.geometry import LineString, Polygon
 pl.ion()
 
 
@@ -12,6 +13,8 @@ class TriangularObstacle(object):
     self.y1 = y1
     self.x2 = x2
     self.y2 = y2
+    self.vertices = [(x0, y0), (x1, y1), (x2, y2)]
+    self.polygon = Polygon(self.vertices)
 
     self.A = np.zeros((3,2))
     self.C = np.zeros(3)
@@ -47,15 +50,28 @@ class TriangularObstacle(object):
     self.C[2] = np.dot(self.A[2, :], np.array([x2,y2]))
 
 
-  def contains(self, x, y):
+  def contains(self, x, y): 
     r = np.dot(self.A, np.array([x,y])) - self.C
     return all([i>0 for i in r])
+  
+  def intersects(self, x1, y1, x2, y2):
+    edge = LineString([(x1, y1), (x2, y2)])
+    return self.polygon.intersects(edge)
 
   def plot(self):
     pl.plot([self.x0,self.x1], [self.y0,self.y1], "r" , linewidth = 2)
     pl.plot([self.x1,self.x2], [self.y1,self.y2], "r" , linewidth = 2)
     pl.plot([self.x2,self.x0], [self.y2,self.y0], "r" , linewidth = 2)        
 
+
+"""
+Environment Variable has access to the size of the space and
+the number of triangular obstacles within the environment. These
+are stored as instances of TriangularObject, which contains three
+individual cartesian coordinates to construct the corresponding triangle.
+The environment has a check_collision variable which automatically checks
+if a generated node lies in the collision space, in which case it's not added to the graph.
+"""
 
 class Environment(object):
   def __init__(self, size_x, size_y, n_obs):
@@ -76,7 +92,14 @@ class Environment(object):
       if ob.contains(x, y):
         return True
     return False
+  
+  def check_intersection(self, x1, y1, x2, y2):
+    for ob in self.obs:
+      if ob.intersects(x1, y1, x2, y2):
+        return True
+    return False
 
+  #Initializes start and goal nodes.
   def random_query(self):
     max_attempts = 100
     found_start = False
@@ -106,3 +129,6 @@ class Environment(object):
   def plot_query(self, x_start, y_start, x_goal, y_goal):
     pl.plot([x_start], [y_start], "bs", markersize = 8)
     pl.plot([x_goal], [y_goal], "y*", markersize = 12)
+
+  def plot_coordinate(self, x_crd, y_crd, color):
+    pl.plot([x_crd], [y_crd], color, markersize = 8)
