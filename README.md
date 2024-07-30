@@ -4,6 +4,7 @@
 
 Hint: you may use the function 𝚎𝚗𝚟.𝚌𝚑𝚎𝚌𝚔_𝚌𝚘𝚕𝚕𝚒𝚜𝚒𝚘𝚗(𝚡,𝚢), which returns 𝚃𝚛𝚞𝚎 if the point (𝚡,𝚢) is contained within a triangular obstacles, 𝙵𝚊𝚕𝚜𝚎 otherwise.
 
+### ** Check prm_first_problem.py for solution. environment_2d.py was also altered to include the condition for checking edge collisions.
 This is the PRM algorithm that I employed:
 1) Generate a random node and check if it lies within the triangular objects.
 2) If not, append it to the search space.
