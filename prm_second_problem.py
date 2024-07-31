@@ -6,17 +6,7 @@ import environment_2d
 import random
 import math
 pl.ion()
-np.random.seed(4)
-
-"""
-PRM Algorithm:
-1) Generate a random node and check if it lies within the triangular objects.
-2) If not, append it to the search space.
-3) As you append, check if any nodes exist within a certain distance from that node and try
-connecting the two through a graph.
-4) If yes, then append that edge to the graph.
-5) Apply Dijkstra's algorithm or A* search to find the optimal path.
-"""
+# np.random.seed(4)
 
 """
 This function initializes coordinates around the vertices of the obstacles,
@@ -92,7 +82,7 @@ def dijkstra(adj_matrix, start_node, target_node, env):
     # Reconstruct the path from start_node to target_node
     path = []
     current_node = target_node
-    # prev_node = current_node
+    prev_node = current_node
     while current_node != -1:
         env.plot_coordinate(graph[current_node][0], graph[current_node][1], "oy")
         path.insert(0, current_node)
@@ -111,50 +101,65 @@ def dijkstra(adj_matrix, start_node, target_node, env):
     
     return distances[target_node], path
 
-def interpolate_points(p1, p2, num_points=10):
+#Creates Intermediate Points Along Line (num_points is variable)
+def intermediate_points(p1, p2, num_points=10):
     """Interpolates points between p1 and p2."""
-    return [(p1[0] + i * (p2[0] - p1[0]) / num_points, p1[1] + i * (p2[1] - p1[1]) / num_points) for i in range(1, num_points + 1)]
+    return [(p1[0] + i * (p2[0] - p1[0]) / num_points, p1[1] + i * (p2[1] - p1[1]) / num_points) for i in range(1, num_points)]
 
 def euclidean_distance(x1, y1, x2, y2):
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-def path_shortcutting(path, graph, env):
-    i = 0
-    while i < len(path) - 2:
-        start = graph[path[i]]
-        middle = graph[path[i + 1]]
-        end = graph[path[i + 2]]
+"""
+After analyzing intermediate points along two consecutive edges, we check
+if the distance from (start -> p1 -> p2 -> end) < (start -> middle -> end). If so,
+the middle node is removed from the optimal path as the distance can be minimized.
+If the path can be shortcutted, the new nodes are visualized and the new path is constructed.
+This particular function is iterative, meaning for each call, it only considers two adjacent edges
+of the provided path, depending on the value of index.
+"""
 
-        # Interpolate points on the first and second edges
-        points_on_first_edge = interpolate_points(start, middle)
-        points_on_second_edge = interpolate_points(middle, end)
+def path_shortcutting(path, env, index):
+    if(path == []):
+      return []
+    
+    start = path[index]
+    middle = path[index + 1]
+    end = path[index + 2]
+    pathFound = False
 
-        for p1 in points_on_first_edge:
-            for p2 in points_on_second_edge:
-                if (not env.check_intersection(p1[0], p1[1], p2[0], p2[1])):
-                    #print(p1[0], p1[1], p2[0], p2[1])
-                    direct_dist = euclidean_distance(start[0], start[1], p1[0], p1[1]) + euclidean_distance(p1[0], p1[1], p2[0], p2[1]) + euclidean_distance(p2[0], p2[1], end[0], end[1])
-                    current_dist = euclidean_distance(start[0], start[1], middle[0], middle[1]) + euclidean_distance(middle[0], middle[1], end[0], end[1])
-                    # print(direct_dist, current_dist)
-                    if direct_dist < current_dist:
-                        # Replace the two edges with the direct edge
-                        #print("Yes")
-                        # env.plot_coordinate(p1[0], p1[1], "og")
-                        # env.plot_coordinate(p2[0], p2[1], "og")
-                        current_dist = direct_dist
-                        # new_path = path[:i + 1] + [path[i + 2]]
-                        # path = new_path
-                        # print(path)
-                        # shortcut_found = True
-        
-        i += 1
-    return path
+    # Interpolate points on the first and second edges
+    first_edge = intermediate_points(start, middle)
+    second_edge = intermediate_points(middle, end)
 
-#Characteristics of the Environment
+    current_dist = euclidean_distance(start[0], start[1], middle[0], middle[1]) + euclidean_distance(middle[0], middle[1], end[0], end[1])
+
+    for p1 in first_edge:
+      for p2 in second_edge:
+        if (not env.check_intersection(p1[0], p1[1], p2[0], p2[1])):
+            direct_dist = euclidean_distance(start[0], start[1], p1[0], p1[1]) + euclidean_distance(p1[0], p1[1], p2[0], p2[1]) + euclidean_distance(p2[0], p2[1], end[0], end[1])
+            if direct_dist < current_dist:
+                # Replace the two edges with the direct edge
+                current_dist = direct_dist
+                coord1 = [p1[0], p1[1]]
+                coord2 = [p2[0], p2[1]]
+                pathFound = True
+        else:
+          pass
+    
+    if pathFound:
+      env.plot_coordinate(coord1[0], coord1[1], "og")
+      env.plot_coordinate(coord2[0], coord2[1], "og")
+      pl.plot([coord1[0], coord2[0]], [coord1[1], coord2[1]], "g" , linewidth = 1)
+      new_path = path[:index + 1] + [coord1] + [coord2] + path[index + 2:]
+      return new_path
+    else:
+      return path
+
+# Characteristics of the Environment
 x_len = 10
 y_len = 6
 num_obstacles = 5
-dist_var = 0.01 #Degree of Altering Distance of Coordinate from Triangular Vertex
+dist_var = 0.01 # Degree of Altering Distance of Coordinate from Triangular Vertex
 num = 2
 
 graph = [] # Two-Dimensional Graph of Vertices
@@ -169,7 +174,7 @@ if q is not None:
   graph.append([x_goal, y_goal])
   env.plot_query(x_start, y_start, x_goal, y_goal)
 
-#Populating Coordinates Around Triangular Vertices
+# Populating Coordinates Around Triangular Vertices
 """
 for ob in env.obs:
   num += triangle_coord(ob.x0, ob.y0, dist_var)
@@ -180,12 +185,12 @@ for ob in env.obs:
 size = 100 + num # Size of Adjacency Matrix (including Start and End Nodes)
 adj_mat = [[0] * size for _ in range(size)]
 
-#Populating Remaining Coordinates
+# Populating Remaining Coordinates
 while num < size:
   x_crd = random.random() * x_len
   y_crd = random.random() * y_len
 
-  #Checks for valid coordinate
+  # Checks for valid coordinate
   if(not env.check_collision(x_crd, y_crd)):
     graph.append([x_crd, y_crd]) # X and Y coordinate, followed by indices of attainable coordinates
     env.plot_coordinate(x_crd, y_crd, "om")
@@ -193,7 +198,7 @@ while num < size:
   else:
     continue
 
-#Populating Adjacency Matrix with Distance Values
+# Populating Adjacency Matrix with Distance Values
 for i in range(0, size):
    coord = graph[i]
 
@@ -203,12 +208,29 @@ for i in range(0, size):
 
     if(not env.check_intersection(temp[0], temp[1], coord[0], coord[1]) and dist < 10):
         # pl.plot([temp[0], coord[0]], [temp[1], coord[1]], "g" , linewidth = 1)
-        adj_mat[i][j] = dist #Populating Adjacency Matrix
+        adj_mat[i][j] = dist # Populating Adjacency Matrix
         adj_mat[j][i] = dist
       
 distance, initial_path = dijkstra(adj_mat, 0, 1, env)
-optimized_path = path_shortcutting(initial_path, graph, env)
 
-print(optimized_path)
+# Converting path from indices to 2-D coordinates for shortcutting
+path_coords = []
+for i in range(len(initial_path)):
+   path_coords.append(graph[initial_path[i]])
+
+iterations = 0
+while(iterations < len(path_coords) - 2):
+  path_coords = path_shortcutting(path_coords, env, iterations)
+  iterations += 2 # Bypasses the shortcutted nodes since the distance is optimal.
+
+# Calculates Distance of New Path
+new_dist = 0
+for i in range(len(path_coords) - 1):
+   new_dist += euclidean_distance(path_coords[i][0], path_coords[i][1], path_coords[i + 1][0], path_coords[i + 1][1])
+
+if new_dist != 0:
+  print('Distance of Path After Shortcutting:', new_dist)
+else:
+  print('Path Not Found!')
 
 pl.show(block = True)
